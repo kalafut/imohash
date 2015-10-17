@@ -30,15 +30,15 @@ func New(sampleSize int64) ImoHash {
 	return h
 }
 
-func HashFilename(filename string) (uint32, error) {
+func HashFilename(filename string) (uint64, error) {
 	return defaultHasher.HashFilename(filename)
 }
 
-func HashFile(file *os.File) (uint32, error) {
+func HashFile(file *os.File) (uint64, error) {
 	return defaultHasher.HashFile(file)
 }
 
-func (imo ImoHash) HashFilename(file string) (uint32, error) {
+func (imo ImoHash) HashFilename(file string) (uint64, error) {
 	f, err := os.Open(file)
 	defer f.Close()
 
@@ -49,14 +49,13 @@ func (imo ImoHash) HashFilename(file string) (uint32, error) {
 	return imo.HashFile(f)
 }
 
-func (imo ImoHash) HashFile(f *os.File) (uint32, error) {
+func (imo ImoHash) HashFile(f *os.File) (uint64, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return 0, err
 	}
 	imo.hasher.Reset()
 
-	imo.hasher.Write(intToSlice(fi.Size()))
 	if fi.Size() <= imo.sampleSize*3 {
 		buffer := make([]byte, fi.Size())
 
@@ -66,7 +65,7 @@ func (imo ImoHash) HashFile(f *os.File) (uint32, error) {
 		buffer := make([]byte, imo.sampleSize)
 		f.Read(buffer)
 		imo.hasher.Write(buffer)
-		f.Seek(fi.Size()/2, 0)
+		f.Seek(fi.Size()/2-imo.sampleSize/2, 0)
 		f.Read(buffer)
 		imo.hasher.Write(buffer)
 		f.Seek(-imo.sampleSize, 2)
@@ -74,12 +73,17 @@ func (imo ImoHash) HashFile(f *os.File) (uint32, error) {
 		imo.hasher.Write(buffer)
 	}
 
-	return imo.hasher.Sum32(), nil
+	size := foldInt(fi.Size())
+
+	return (uint64(size) << 32) | uint64(imo.hasher.Sum32()), nil
 }
 
-func intToSlice(i int64) []byte {
-	return []byte{
-		byte(i >> 56), byte(i >> 48), byte(i >> 40), byte(i >> 32),
-		byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i),
+func foldInt(v int64) uint32 {
+	var r, i uint32
+
+	for i = 0; i < 4; i++ {
+		r |= uint32((byte(v>>(8*i)) ^ byte(v>>(56-(8*i))))) << (8 * i)
 	}
+
+	return r
 }

@@ -1,6 +1,7 @@
 package imohash
 
 import (
+	"bytes"
 	"flag"
 	"io/ioutil"
 	"log"
@@ -24,69 +25,97 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
-func TestIntToSlice(t *testing.T) {
+func TestFoldInt(t *testing.T) {
 	is := is.New(t)
+	tests := []struct {
+		in  int64
+		out uint32
+	}{
+		{0x00, 0x00}, {0x01, 0x01}, {0xff, 0xff}, {0xffff, 0xffff},
+		{0xffffffff, 0xffffffff}, {0x01ffffffff, 0xfeffffff}, {0x123456789abcdef0, 0xe2eaeae2},
+	}
 
-	is.Equal(intToSlice(0), []byte{0, 0, 0, 0, 0, 0, 0, 0})
-	is.Equal(intToSlice(1), []byte{0, 0, 0, 0, 0, 0, 0, 1})
-	is.Equal(intToSlice(0x44eeddccbbaa9977), []byte{0x44, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x77})
+	for _, test := range tests {
+		is.Equal(foldInt(test.in), test.out)
+	}
 }
 
-func TestBasic(t *testing.T) {
-	var hash uint32
+func TestDefault(t *testing.T) {
+	const sampleFile = "sample"
+	var hash uint64
 	var err error
 
 	is := is.New(t)
 
 	// empty file
-	ioutil.WriteFile("sample", []byte{}, 0666)
-	hash, err = HashFilename("sample")
+	ioutil.WriteFile(sampleFile, []byte{}, 0666)
+	hash, err = HashFilename(sampleFile)
 	is.NotErr(err)
-	is.Equal(hash, murmur3.Sum32([]byte{0, 0, 0, 0, 0, 0, 0, 0}))
+	is.Equal(hash, uint64(0)<<32|uint64(murmur3.Sum32([]byte{})))
 
 	// small file
-	ioutil.WriteFile("sample", []byte("hello"), 0666)
-	hash, err = HashFilename("sample")
-	is.Equal(hash, murmur3.Sum32([]byte{0, 0, 0, 0, 0, 0, 0, 5, 'h', 'e', 'l', 'l', 'o'}))
+	ioutil.WriteFile(sampleFile, []byte("hello"), 0666)
+	hash, err = HashFilename(sampleFile)
+	is.Equal(hash, uint64(5)<<32|uint64(murmur3.Sum32([]byte{'h', 'e', 'l', 'l', 'o'})))
 
-	filename := WriteSample("s", 100)
+	/* boundary tests using the default sample size */
+	size := 12290
 
-	hash, err = HashFilename(filename)
-	is.NotErr(err)
-	//is.Equal(hash, 0xce42b64)
+	// test that changing the gaps between sample zones does not affect the hash
+	data := bytes.Repeat([]byte{'A'}, size)
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h1, _ := HashFilename(sampleFile)
+
+	data[defaultSampleSize] = 'B'
+	data[size-defaultSampleSize-1] = 'B'
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h2, _ := HashFilename(sampleFile)
+	is.Equal(h1, h2)
+
+	// test that changing a byte on the edge (but within) a sample zone
+	// does change the hash
+	data = bytes.Repeat([]byte{'A'}, size)
+	data[defaultSampleSize-1] = 'B'
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h3, _ := HashFilename(sampleFile)
+	is.NotEqual(h1, h3)
+
+	data = bytes.Repeat([]byte{'A'}, size)
+	data[defaultSampleSize+1] = 'B'
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h4, _ := HashFilename(sampleFile)
+	is.NotEqual(h1, h4)
+	is.NotEqual(h3, h4)
+
+	data = bytes.Repeat([]byte{'A'}, size)
+	data[2*defaultSampleSize] = 'B'
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h5, _ := HashFilename(sampleFile)
+	is.NotEqual(h1, h5)
+	is.NotEqual(h3, h5)
+	is.NotEqual(h4, h5)
+
+	data = bytes.Repeat([]byte{'A'}, size)
+	data[2*defaultSampleSize+2] = 'B'
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h6, _ := HashFilename(sampleFile)
+	is.NotEqual(h1, h6)
+	is.NotEqual(h3, h6)
+	is.NotEqual(h4, h6)
+	is.NotEqual(h5, h6)
+
+	// test that changing the size changes the hash
+	data = bytes.Repeat([]byte{'A'}, size+1)
+	ioutil.WriteFile(sampleFile, data, 0666)
+	h7, _ := HashFilename(sampleFile)
+	is.NotEqual(h1, h7)
+	is.NotEqual(h3, h7)
+	is.NotEqual(h4, h7)
+	is.NotEqual(h5, h7)
+	is.NotEqual(h6, h7)
+
+	os.Remove(sampleFile)
 }
-
-/*
-func TestHash(t *testing.T) {
-	SAMPLE_FILE := filepath.Join(tempDir, "sample.txt")
-
-	is := is.New(t)
-
-	h, err := smartHash("not_found.txt")
-	is.Err(err)
-
-	WriteSample(SAMPLE_FILE, 100)
-	h, err = smartHash(SAMPLE_FILE)
-	os.Remove(SAMPLE_FILE)
-	is.NotErr(err)
-
-	is.Equal(h, uint64(0xf98540d8f8a71e22))
-
-	WriteSample(SAMPLE_FILE, 10000000)
-	h, err = smartHash(SAMPLE_FILE)
-	os.Remove(SAMPLE_FILE)
-	is.NotErr(err)
-
-	is.Equal(h, uint64(0x93686806171fdb95))
-
-	WriteSample(SAMPLE_FILE, 10000001)
-	h, err = smartHash(SAMPLE_FILE)
-	os.Remove(SAMPLE_FILE)
-	is.NotErr(err)
-
-	is.Equal(h, uint64(0x93686806171fdb95))
-}
-*/
 
 func WriteSample(name string, size int) string {
 	fullFilename := filepath.Join(tempDir, name)

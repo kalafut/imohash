@@ -3,13 +3,11 @@ package imohash
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/spaolacci/murmur3"
 	"gopkg.in/tylerb/is.v1"
 )
 
@@ -25,80 +23,65 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
-func TestFoldInt(t *testing.T) {
-	is := is.New(t)
-	tests := []struct {
-		in  int64
-		out uint32
-	}{
-		{0x00, 0x00}, {0x01, 0x01}, {0xff, 0xff}, {0xffff, 0xffff},
-		{0xffffffff, 0xffffffff}, {0x01ffffffff, 0xfeffffff}, {0x123456789abcdef0, 0xe2eaeae2},
-	}
-
-	for _, test := range tests {
-		is.Equal(foldInt(test.in), test.out)
-	}
-}
-
 func TestDefault(t *testing.T) {
 	const sampleFile = "sample"
-	var hash uint64
+	var hash [Size]byte
 	var err error
 
 	is := is.New(t)
 
 	// empty file
 	ioutil.WriteFile(sampleFile, []byte{}, 0666)
-	hash, err = HashFilename(sampleFile)
+	hash, err = SumFile(sampleFile)
 	is.NotErr(err)
-	is.Equal(hash, uint64(0)<<32|uint64(murmur3.Sum32([]byte{})))
+	is.Equal(hash, [Size]byte{})
 
 	// small file
-	ioutil.WriteFile(sampleFile, []byte("hello"), 0666)
-	hash, err = HashFilename(sampleFile)
-	is.Equal(hash, uint64(5)<<32|uint64(murmur3.Sum32([]byte{'h', 'e', 'l', 'l', 'o'})))
+	hash = Sum([]byte("hello"))
+	hashStr := fmt.Sprintf("%x", hash)
+	is.Equal(hashStr, "05d8a7b341bd9b025b1e906a48ae1d19")
 
 	/* boundary tests using the default sample size */
-	size := 12290
+	size := SampleThreshhold
 
 	// test that changing the gaps between sample zones does not affect the hash
 	data := bytes.Repeat([]byte{'A'}, size)
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h1, _ := HashFilename(sampleFile)
+	h1, _ := SumFile(sampleFile)
 
-	data[defaultSampleSize] = 'B'
-	data[size-defaultSampleSize-1] = 'B'
+	data[SampleSize] = 'B'
+	data[size-SampleSize-1] = 'B'
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h2, _ := HashFilename(sampleFile)
+	h2, _ := SumFile(sampleFile)
 	is.Equal(h1, h2)
 
 	// test that changing a byte on the edge (but within) a sample zone
 	// does change the hash
 	data = bytes.Repeat([]byte{'A'}, size)
-	data[defaultSampleSize-1] = 'B'
+	data[SampleSize-1] = 'B'
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h3, _ := HashFilename(sampleFile)
+	h3, _ := SumFile(sampleFile)
 	is.NotEqual(h1, h3)
 
 	data = bytes.Repeat([]byte{'A'}, size)
-	data[defaultSampleSize+1] = 'B'
+	data[size/2] = 'B'
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h4, _ := HashFilename(sampleFile)
+	h4, _ := SumFile(sampleFile)
 	is.NotEqual(h1, h4)
 	is.NotEqual(h3, h4)
 
 	data = bytes.Repeat([]byte{'A'}, size)
-	data[2*defaultSampleSize] = 'B'
+	data[size/2+SampleSize-1] = 'B'
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h5, _ := HashFilename(sampleFile)
+	h5, _ := SumFile(sampleFile)
 	is.NotEqual(h1, h5)
 	is.NotEqual(h3, h5)
 	is.NotEqual(h4, h5)
 
 	data = bytes.Repeat([]byte{'A'}, size)
-	data[2*defaultSampleSize+2] = 'B'
+	data[size-SampleSize] = 'B'
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h6, _ := HashFilename(sampleFile)
+	h6, _ := SumFile(sampleFile)
 	is.NotEqual(h1, h6)
 	is.NotEqual(h3, h6)
 	is.NotEqual(h4, h6)
@@ -107,7 +90,7 @@ func TestDefault(t *testing.T) {
 	// test that changing the size changes the hash
 	data = bytes.Repeat([]byte{'A'}, size+1)
 	ioutil.WriteFile(sampleFile, data, 0666)
-	h7, _ := HashFilename(sampleFile)
+	h7, _ := SumFile(sampleFile)
 	is.NotEqual(h1, h7)
 	is.NotEqual(h3, h7)
 	is.NotEqual(h4, h7)
@@ -117,18 +100,37 @@ func TestDefault(t *testing.T) {
 	os.Remove(sampleFile)
 }
 
-func WriteSample(name string, size int) string {
-	fullFilename := filepath.Join(tempDir, name)
-	data := make([]byte, size)
+// Test the basic hash.Hash functions
+func TestHashInterface(t *testing.T) {
+	const sampleFile = "sample"
 
-	for i := 0; i < size; i++ {
-		data[i] = 'A'
-	}
+	is := is.New(t)
 
-	err := ioutil.WriteFile(fullFilename, data, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Test Write() and Sum()
+	defaultHasher.Reset()
+	defaultHasher.Write([]byte("hello"))
+	base := []byte{0x55, 0x22, 0xee}
+	hashStr := fmt.Sprintf("%x", defaultHasher.Sum(base))
+	is.Equal(hashStr, "5522ee05d8a7b341bd9b025b1e906a48ae1d19") // matches reference murmur3 hash
 
-	return fullFilename
+	// Test that calling Sum() previously didn't affect state
+	base = []byte{0x55, 0x22, 0xee}
+	hashStr = fmt.Sprintf("%x", defaultHasher.Sum(base))
+	is.Equal(hashStr, "5522ee05d8a7b341bd9b025b1e906a48ae1d19")
+
+	// Test adding more data with Write()
+	defaultHasher.Write([]byte(", world"))
+	base = []byte{0x99}
+	hashStr = fmt.Sprintf("%x", defaultHasher.Sum(base))
+	is.Equal(hashStr, "990c2fac623a5ebc8e4cdcbc079642414d") // matches reference murmur3 hash
+
+	// Test Reset()
+	defaultHasher.Reset()
+	base = []byte{}
+	hashStr = fmt.Sprintf("%x", defaultHasher.Sum(base))
+	is.Equal(hashStr, "00000000000000000000000000000000")
+
+	// Test BlockSize() and Size()
+	is.Equal(defaultHasher.BlockSize(), 1)
+	is.Equal(defaultHasher.Size(), 16)
 }

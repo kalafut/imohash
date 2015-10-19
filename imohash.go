@@ -1,89 +1,120 @@
 package imohash
 
 import (
+	"bytes"
+	"encoding/binary"
 	"hash"
+	"io"
 	"os"
 
 	"github.com/spaolacci/murmur3"
 )
 
-const defaultSampleSize = 4096
-const FULL_HASH_LIMIT = 3 * defaultSampleSize
+const Size = 16
 
-var defaultHasher = New(defaultSampleSize)
+// Files smaller than 128kb will be hashed in their entirety.
+const SampleThreshhold = 128 * 1024
+const SampleSize = 16 * 1024
+
+var defaultHasher = New(SampleSize)
+var emptyArray = [Size]byte{}
+
+// Make sure interfaces are correctly implemented.
+var (
+	_ hash.Hash = new(ImoHash)
+)
 
 type ImoHash struct {
-	hasher     hash.Hash32
-	sampleSize int64
+	hasher     murmur3.Hash128
+	sampleSize int
+	bytesAdded int
 }
 
-func New(sampleSize int64) ImoHash {
-	if sampleSize < 1 {
-		sampleSize = defaultSampleSize
+func New(sampleSize ...int) ImoHash {
+	h := ImoHash{
+		hasher:     murmur3.New128(),
+		sampleSize: SampleSize,
 	}
 
-	h := ImoHash{
-		hasher:     murmur3.New32(),
-		sampleSize: sampleSize,
+	if len(sampleSize) > 0 {
+		h.sampleSize = sampleSize[0]
 	}
 
 	return h
 }
 
-func HashFilename(filename string) (uint64, error) {
-	return defaultHasher.HashFilename(filename)
+func SumFile(filename string) ([Size]byte, error) {
+	return defaultHasher.SumFile(filename)
 }
 
-func HashFile(file *os.File) (uint64, error) {
-	return defaultHasher.HashFile(file)
-}
-
-func (imo ImoHash) HashFilename(file string) (uint64, error) {
+func (imo *ImoHash) SumFile(file string) ([Size]byte, error) {
 	f, err := os.Open(file)
 	defer f.Close()
 
 	if err != nil {
-		return 0, err
+		return emptyArray, err
 	}
 
-	return imo.HashFile(f)
-}
-
-func (imo ImoHash) HashFile(f *os.File) (uint64, error) {
 	fi, err := f.Stat()
 	if err != nil {
-		return 0, err
+		return emptyArray, err
 	}
+	sr := io.NewSectionReader(f, 0, fi.Size())
+	return imo.hashCore(sr), nil
+}
+
+func Sum(data []byte) [Size]byte {
+	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
+	return defaultHasher.hashCore(sr)
+}
+
+// hash.Hash methods
+func (imo *ImoHash) BlockSize() int { return 1 }
+
+func (imo *ImoHash) Reset() {
+	imo.bytesAdded = 0
+	imo.hasher.Reset()
+}
+
+func (imo *ImoHash) Size() int { return Size }
+
+func (imo *ImoHash) Sum(data []byte) []byte {
+	hash := imo.hasher.Sum(nil)
+	binary.PutUvarint(hash, uint64(imo.bytesAdded))
+	return append(data, hash...)
+}
+
+func (imo *ImoHash) Write(data []byte) (n int, err error) {
+	imo.hasher.Write(data)
+	imo.bytesAdded += len(data)
+	return len(data), nil
+}
+
+func (imo *ImoHash) hashCore(f *io.SectionReader) [Size]byte {
+	var result [Size]byte
+
 	imo.hasher.Reset()
 
-	if fi.Size() <= imo.sampleSize*3 {
-		buffer := make([]byte, fi.Size())
-
+	if f.Size() < SampleThreshhold {
+		buffer := make([]byte, f.Size())
 		f.Read(buffer)
 		imo.hasher.Write(buffer)
 	} else {
 		buffer := make([]byte, imo.sampleSize)
 		f.Read(buffer)
 		imo.hasher.Write(buffer)
-		f.Seek(fi.Size()/2-imo.sampleSize/2, 0)
+		f.Seek(f.Size()/2, 0)
 		f.Read(buffer)
 		imo.hasher.Write(buffer)
-		f.Seek(-imo.sampleSize, 2)
+		f.Seek(int64(-imo.sampleSize), 2)
 		f.Read(buffer)
 		imo.hasher.Write(buffer)
 	}
 
-	size := foldInt(fi.Size())
+	hash := imo.hasher.Sum(nil)
 
-	return (uint64(size) << 32) | uint64(imo.hasher.Sum32()), nil
-}
+	binary.PutUvarint(hash, uint64(f.Size()))
+	copy(result[:], hash)
 
-func foldInt(v int64) uint32 {
-	var r, i uint32
-
-	for i = 0; i < 4; i++ {
-		r |= uint32((byte(v>>(8*i)) ^ byte(v>>(56-(8*i))))) << (8 * i)
-	}
-
-	return r
+	return result
 }

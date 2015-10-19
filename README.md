@@ -25,3 +25,6 @@ If you you a library of tens of thousands of photos/video, chances are that ther
 imohash is a small wrapper around murmur3, a fast and well-regarded hashing algorithm.
 
 # Performance
+
+# Credits
+The "sparseFingerprints" used in [TMSU](https://github.com/oniony/TMSU) gave me some confidence in this approach to hashing.

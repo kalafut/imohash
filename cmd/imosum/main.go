@@ -10,15 +10,10 @@ import (
 
 func main() {
 	flag.Parse()
-
 	files := flag.Args()
-	//files, err := filepath.Glob(flag.Arg(0))
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 
 	for _, file := range files {
-		hash, err := imohash.HashFilename(file)
+		hash, err := imohash.SumFile(file)
 		if err != nil {
 			log.Fatal(err)
 		}

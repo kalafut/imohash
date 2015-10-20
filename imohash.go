@@ -16,7 +16,6 @@ const Size = 16
 const SampleThreshhold = 128 * 1024
 const SampleSize = 16 * 1024
 
-var defaultHasher = New(SampleSize)
 var emptyArray = [Size]byte{}
 
 // Make sure interfaces are correctly implemented.
@@ -44,11 +43,12 @@ func New(sampleSize ...int) ImoHash {
 }
 
 func SumFile(filename string) ([Size]byte, error) {
-	return defaultHasher.SumFile(filename)
+	h := New(SampleSize)
+	return h.SumFile(filename)
 }
 
-func (imo *ImoHash) SumFile(file string) ([Size]byte, error) {
-	f, err := os.Open(file)
+func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
+	f, err := os.Open(filename)
 	defer f.Close()
 
 	if err != nil {
@@ -64,8 +64,10 @@ func (imo *ImoHash) SumFile(file string) ([Size]byte, error) {
 }
 
 func Sum(data []byte) [Size]byte {
+	hasher := New(SampleSize)
 	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
-	return defaultHasher.hashCore(sr)
+
+	return hasher.hashCore(sr)
 }
 
 // hash.Hash methods

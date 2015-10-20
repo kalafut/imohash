@@ -102,11 +102,10 @@ func TestDefault(t *testing.T) {
 
 // Test the basic hash.Hash functions
 func TestHashInterface(t *testing.T) {
-	const sampleFile = "sample"
-
 	is := is.New(t)
 
 	// Test Write() and Sum()
+	defaultHasher := New()
 	defaultHasher.Reset()
 	defaultHasher.Write([]byte("hello"))
 	base := []byte{0x55, 0x22, 0xee}

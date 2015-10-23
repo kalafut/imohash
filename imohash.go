@@ -1,3 +1,7 @@
+// Package imohash implements a fast, constant-time hash for files. It is based atop
+// murmurhash3 and uses file size and sample data to construct the hash.
+//
+// For more information, including important caveats on usage, consult https://github.com/kalafut/imohash.
 package imohash
 
 import (
@@ -24,29 +28,46 @@ var (
 )
 
 type ImoHash struct {
-	hasher     murmur3.Hash128
-	sampleSize int
-	bytesAdded int
+	hasher          murmur3.Hash128
+	sampleSize      int
+	sampleThreshold int
+	bytesAdded      int
 }
 
-func New(sampleSize ...int) ImoHash {
-	h := ImoHash{
-		hasher:     murmur3.New128(),
-		sampleSize: SampleSize,
-	}
+// New returns a new ImoHash using the default sample size
+// and sample threshhold values.
+func New() ImoHash {
+	return NewCustom(SampleSize, SampleThreshhold)
+}
 
-	if len(sampleSize) > 0 {
-		h.sampleSize = sampleSize[0]
+// NewCustom returns a new ImoHash using the provided sample size
+// and sample threshhold values. The entire file will be hashed
+// (i.e. no sampling), if sampleSize < 1.
+func NewCustom(sampleSize, sampleThreshold int) ImoHash {
+	h := ImoHash{
+		hasher:          murmur3.New128(),
+		sampleSize:      sampleSize,
+		sampleThreshold: sampleThreshold,
 	}
 
 	return h
 }
 
+// SumFile hashes a file using default sample parameters.
 func SumFile(filename string) ([Size]byte, error) {
-	h := New(SampleSize)
-	return h.SumFile(filename)
+	imo := New()
+	return imo.SumFile(filename)
 }
 
+// Sum128 hashes a byte slice using default sample parameters.
+func Sum128(data []byte) [Size]byte {
+	imo := New()
+	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
+
+	return imo.hashCore(sr)
+}
+
+// SumFile hashes a file using using the ImoHash parameters.
 func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
 	f, err := os.Open(filename)
 	defer f.Close()
@@ -63,41 +84,39 @@ func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
 	return imo.hashCore(sr), nil
 }
 
-func Sum(data []byte) [Size]byte {
-	hasher := New(SampleSize)
-	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
-
-	return hasher.hashCore(sr)
-}
-
-// hash.Hash methods
-func (imo *ImoHash) BlockSize() int { return 1 }
-
-func (imo *ImoHash) Reset() {
-	imo.bytesAdded = 0
-	imo.hasher.Reset()
-}
-
-func (imo *ImoHash) Size() int { return Size }
-
+// Sum appends the current hash to data and returns the resulting slice.
+// It does not change the underlying hash state.
 func (imo *ImoHash) Sum(data []byte) []byte {
 	hash := imo.hasher.Sum(nil)
 	binary.PutUvarint(hash, uint64(imo.bytesAdded))
 	return append(data, hash...)
 }
 
+// Write (via the embedded io.Writer interface) adds more data to the running hash.
 func (imo *ImoHash) Write(data []byte) (n int, err error) {
 	imo.hasher.Write(data)
 	imo.bytesAdded += len(data)
 	return len(data), nil
 }
 
+func (imo *ImoHash) BlockSize() int { return 1 }
+
+// Reset resets the Hash to its initial state.
+func (imo *ImoHash) Reset() {
+	imo.bytesAdded = 0
+	imo.hasher.Reset()
+}
+
+// Size returns the number of bytes Sum will return.
+func (imo *ImoHash) Size() int { return Size }
+
+// hashCore hashes a SectionReader using the ImoHash parameters.
 func (imo *ImoHash) hashCore(f *io.SectionReader) [Size]byte {
 	var result [Size]byte
 
 	imo.hasher.Reset()
 
-	if f.Size() < SampleThreshhold {
+	if f.Size() < int64(imo.sampleThreshold) || imo.sampleSize < 1 {
 		buffer := make([]byte, f.Size())
 		f.Read(buffer)
 		imo.hasher.Write(buffer)

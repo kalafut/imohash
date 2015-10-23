@@ -1,30 +1,72 @@
 # imohash
-Fast hash for large files
 
-imohash is a fast, constant time hash for files with the following properties:
+imohash is a fast, constant-time hashing library for Go. It uses file size and
+sampling to calculate hashes quickly, regardless of file size.
 
-- files of different length will have different hashes
-- files are sampled, providing fast fixed-time performance
-- the underlying hash is murmur3
+imosum is a sample application to hash files from the command line, similiar to
+md5sum.
 
-# Background
+## Installation
 
-imohash fell out of a need to do file synchronization and deduplication overa fairly slow network. Managing media (photos and video) over wi-fi between a NAS and multiple family computers is a typical example. To check whether two files are the same without doing a byto-for-byte comparison, a some properties to check include:
+`go get github.com/kalafut/imohash/...`
 
-1. filename
-2. date/time
-3. size
-4. hash of content
+[Documentation](https://godoc.org/github.com/kalafut/imohash)
 
-I tend to avoid using numbers 1 & 2 for very much. size is an simple way to tell that files aren't the same, and using a decent hash function in addition to size can shown that two files are most likely the same. But hashing a file still involves reading the file, and this can be very slow when you're talking about large files. imohash attempts to address the problem by working from the following assumption: **hashing a small part of a file may be good enough**.
+## Uses
 
-If you you a library of tens of thousands of photos/video, chances are that there aren't hundreds of files with the same file size. So right away you can show what things *aren't* the same. And of items that are the same size, there's probably a very good chance that comparing or hashing a few KB of the beginning, middle and end will be sufficient to determine which files are likely the same.
+Because imohash only reads a small portion of a file's data, it is very fast and
+well suited to file synchronization and deduplication, especially over a fairly
+slow network. A need to manage media (photos and video) over Wi-Fi between a NAS
+and multiple family computers is how the library was born.
 
-# Design
+If you just need to check whether two files are the same, and understand the
+limitations that sampling imposes (see below), imohash may be a good fit.
 
-imohash is a small wrapper around murmur3, a fast and well-regarded hashing algorithm.
+## Misuses
 
-# Performance
+Because imohash only reads a small portion of a file's data, it is not suitable
+for:
 
-# Credits
-The "sparseFingerprints" used in [TMSU](https://github.com/oniony/TMSU) gave me some confidence in this approach to hashing.
+- file verification or integrity monitoring
+- cases where fixed-size files are manipulated
+- anything cryptographic
+
+## Design
+
+imohash is works by hashing small chunks of data from the beginning, middle and
+end of a file. It also incorporates the file size into the final 128-bit hash.
+This approach is based on a few assumptions which will vary by application.
+First, file size alone *tends*<sup>1</sup> to be a pretty good differentiator, especially
+as file size increases. And when people do things to files (such as editing
+photos), size tends to change. So size is used directly is that hash, and **any
+files that have different sizes will have different hashes**.
+
+Size is an effective differentiator but isn't sufficient. It can show that two
+files aren't the same, but to increase confidence that like-size files are the
+same, a few segments are hashed using
+[murmur3](https://en.wikipedia.org/wiki/MurmurHash), a fast and effective
+hashing algorithm.  By default, 16K chunks from the beginning, middle and end of
+the file are used.  The ends of files often contain metadata which is more prone
+to changing without affecting file size. The middle is for good measure. The
+sample size can be changed for your application.
+
+<sup>1</sup> Try `du -a . | sort -nr | less` on a sample of your files to check this assertion.
+
+### Small file exemption
+Small files are more likely to collide on size than large ones. They're also
+probably more likely to change is subtle ways that sampling will miss (e.g.
+editing a large text file). For this reason, imohash will simply hash the entire
+file is it is less than 128K. This parameter is also configurable.
+
+## Performance
+The standard hash performance metrics make no sense for imohash since it's only
+reading a limited set of the data. That said, the real-world performance as is
+very good. If you are working with large files and/or a slow network,
+expect huge speedups. (**spoiler**: reading 48K is quicker than reading 500MB.)
+
+## Name
+Inspired by [ILS marker beacons](https://en.wikipedia.org/wiki/Marker_beacon).
+
+## Credits
+The "sparseFingerprints" used in [TMSU](https://github.com/oniony/TMSU) gave me
+some confidence in this approach to hashing.

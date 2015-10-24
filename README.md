@@ -3,14 +3,14 @@
 imohash is a fast, constant-time hashing library for Go. It uses file size and
 sampling to calculate hashes quickly, regardless of file size.
 
-imosum is a sample application to hash files from the command line, similiar to
-md5sum.
+[imosum](https://github.com/kalafut/imohash/blob/master/cmd/imosum/main.go) is
+a sample application to hash files from the command line, similar to md5sum.
 
 ## Installation
 
 `go get github.com/kalafut/imohash/...`
 
-[Documentation](https://godoc.org/github.com/kalafut/imohash)
+The API is described in the [package documentation](https://godoc.org/github.com/kalafut/imohash).
 
 ## Uses
 
@@ -38,7 +38,7 @@ end of a file. It also incorporates the file size into the final 128-bit hash.
 This approach is based on a few assumptions which will vary by application.
 First, file size alone *tends*<sup>1</sup> to be a pretty good differentiator, especially
 as file size increases. And when people do things to files (such as editing
-photos), size tends to change. So size is used directly is that hash, and **any
+photos), size tends to change. So size is used directly in the hash, and **any
 files that have different sizes will have different hashes**.
 
 Size is an effective differentiator but isn't sufficient. It can show that two
@@ -56,11 +56,11 @@ sample size can be changed for your application.
 Small files are more likely to collide on size than large ones. They're also
 probably more likely to change is subtle ways that sampling will miss (e.g.
 editing a large text file). For this reason, imohash will simply hash the entire
-file is it is less than 128K. This parameter is also configurable.
+file if it is less than 128K. This parameter is also configurable.
 
 ## Performance
 The standard hash performance metrics make no sense for imohash since it's only
-reading a limited set of the data. That said, the real-world performance as is
+reading a limited set of the data. That said, the real-world performance is
 very good. If you are working with large files and/or a slow network,
 expect huge speedups. (**spoiler**: reading 48K is quicker than reading 500MB.)
 

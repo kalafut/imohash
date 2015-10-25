@@ -22,7 +22,7 @@ and multiple family computers is how the library was born.
 If you just need to check whether two files are the same, and understand the
 limitations that sampling imposes (see below), imohash may be a good fit.
 
-## Misuses
+## Minuses
 
 Because imohash only reads a small portion of a file's data, it is not suitable
 for:

@@ -68,5 +68,7 @@ expect huge speedups. (**spoiler**: reading 48K is quicker than reading 500MB.)
 Inspired by [ILS marker beacons](https://en.wikipedia.org/wiki/Marker_beacon).
 
 ## Credits
-The "sparseFingerprints" used in [TMSU](https://github.com/oniony/TMSU) gave me
+* The "sparseFingerprints" used in [TMSU](https://github.com/oniony/TMSU) gave me
 some confidence in this approach to hashing.
+* Sébastien Paolacci's [murmur3](https://github.com/spaolacci/murmur3) library does
+all of the heavy lifting.

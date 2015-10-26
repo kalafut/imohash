@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -21,83 +22,6 @@ func TestMain(m *testing.M) {
 	ret := m.Run()
 	os.RemoveAll(tempDir)
 	os.Exit(ret)
-}
-
-func TestDefault(t *testing.T) {
-	const sampleFile = "sample"
-	var hash [Size]byte
-	var err error
-
-	is := is.New(t)
-
-	// empty file
-	ioutil.WriteFile(sampleFile, []byte{}, 0666)
-	hash, err = SumFile(sampleFile)
-	is.NotErr(err)
-	is.Equal(hash, [Size]byte{})
-
-	// small file
-	hash = Sum([]byte("hello"))
-	hashStr := fmt.Sprintf("%x", hash)
-	is.Equal(hashStr, "05d8a7b341bd9b025b1e906a48ae1d19")
-
-	/* boundary tests using the default sample size */
-	size := SampleThreshhold
-
-	// test that changing the gaps between sample zones does not affect the hash
-	data := bytes.Repeat([]byte{'A'}, size)
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h1, _ := SumFile(sampleFile)
-
-	data[SampleSize] = 'B'
-	data[size-SampleSize-1] = 'B'
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h2, _ := SumFile(sampleFile)
-	is.Equal(h1, h2)
-
-	// test that changing a byte on the edge (but within) a sample zone
-	// does change the hash
-	data = bytes.Repeat([]byte{'A'}, size)
-	data[SampleSize-1] = 'B'
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h3, _ := SumFile(sampleFile)
-	is.NotEqual(h1, h3)
-
-	data = bytes.Repeat([]byte{'A'}, size)
-	data[size/2] = 'B'
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h4, _ := SumFile(sampleFile)
-	is.NotEqual(h1, h4)
-	is.NotEqual(h3, h4)
-
-	data = bytes.Repeat([]byte{'A'}, size)
-	data[size/2+SampleSize-1] = 'B'
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h5, _ := SumFile(sampleFile)
-	is.NotEqual(h1, h5)
-	is.NotEqual(h3, h5)
-	is.NotEqual(h4, h5)
-
-	data = bytes.Repeat([]byte{'A'}, size)
-	data[size-SampleSize] = 'B'
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h6, _ := SumFile(sampleFile)
-	is.NotEqual(h1, h6)
-	is.NotEqual(h3, h6)
-	is.NotEqual(h4, h6)
-	is.NotEqual(h5, h6)
-
-	// test that changing the size changes the hash
-	data = bytes.Repeat([]byte{'A'}, size+1)
-	ioutil.WriteFile(sampleFile, data, 0666)
-	h7, _ := SumFile(sampleFile)
-	is.NotEqual(h1, h7)
-	is.NotEqual(h3, h7)
-	is.NotEqual(h4, h7)
-	is.NotEqual(h5, h7)
-	is.NotEqual(h6, h7)
-
-	os.Remove(sampleFile)
 }
 
 func TestCustom(t *testing.T) {
@@ -188,5 +112,34 @@ func TestCustom(t *testing.T) {
 	is.Equal(hashStr, "2d9123b54d37e9b8f94ab37a7eca6f40")
 
 	os.Remove(sampleFile)
+}
 
+// Test that the top level functions are the same as custom
+// functions using the spec defaults.
+func TestDefault(t *testing.T) {
+	const sampleFile = "sample"
+	var h1, h2 [Size]byte
+	var testData []byte
+
+	is := is.New(t)
+
+	for _, size := range []int{100, 131071, 131072, 50000} {
+		imo := NewCustom(16384, 131072)
+		testData = randData(size)
+		is.Equal(Sum(testData), imo.Sum(testData))
+		ioutil.WriteFile(sampleFile, []byte{}, 0666)
+		h1, _ = SumFile(sampleFile)
+		h2, _ = imo.SumFile(sampleFile)
+		is.Equal(h1, h2)
+	}
+	os.Remove(sampleFile)
+}
+
+// randData generates n bytes of random data
+func randData(n int) []byte {
+	r := make([]byte, 0, n)
+	for i := 0; i < n; i++ {
+		r = append(r, byte(rand.Intn(256)))
+	}
+	return r
 }

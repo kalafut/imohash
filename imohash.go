@@ -7,7 +7,6 @@ package imohash
 import (
 	"bytes"
 	"encoding/binary"
-	"hash"
 	"io"
 	"os"
 
@@ -16,16 +15,11 @@ import (
 
 const Size = 16
 
-// Files smaller than 128kb will be hashed in their entirety.
+// Files smaller than this will be hashed in their entirety.
 const SampleThreshhold = 128 * 1024
 const SampleSize = 16 * 1024
 
 var emptyArray = [Size]byte{}
-
-// Make sure interfaces are correctly implemented.
-var (
-	_ hash.Hash = new(ImoHash)
-)
 
 type ImoHash struct {
 	hasher          murmur3.Hash128
@@ -59,9 +53,14 @@ func SumFile(filename string) ([Size]byte, error) {
 	return imo.SumFile(filename)
 }
 
-// Sum128 hashes a byte slice using default sample parameters.
-func Sum128(data []byte) [Size]byte {
+// Sum hashes a byte slice using default sample parameters.
+func Sum(data []byte) [Size]byte {
 	imo := New()
+	return imo.Sum(data)
+}
+
+// Sum hashes a byte slice using the ImoHash parameters.
+func (imo *ImoHash) Sum(data []byte) [Size]byte {
 	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
 
 	return imo.hashCore(sr)
@@ -83,32 +82,6 @@ func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
 	sr := io.NewSectionReader(f, 0, fi.Size())
 	return imo.hashCore(sr), nil
 }
-
-// Sum appends the current hash to data and returns the resulting slice.
-// It does not change the underlying hash state.
-func (imo *ImoHash) Sum(data []byte) []byte {
-	hash := imo.hasher.Sum(nil)
-	binary.PutUvarint(hash, uint64(imo.bytesAdded))
-	return append(data, hash...)
-}
-
-// Write (via the embedded io.Writer interface) adds more data to the running hash.
-func (imo *ImoHash) Write(data []byte) (n int, err error) {
-	imo.hasher.Write(data)
-	imo.bytesAdded += len(data)
-	return len(data), nil
-}
-
-func (imo *ImoHash) BlockSize() int { return 1 }
-
-// Reset resets the Hash to its initial state.
-func (imo *ImoHash) Reset() {
-	imo.bytesAdded = 0
-	imo.hasher.Reset()
-}
-
-// Size returns the number of bytes Sum will return.
-func (imo *ImoHash) Size() int { return Size }
 
 // hashCore hashes a SectionReader using the ImoHash parameters.
 func (imo *ImoHash) hashCore(f *io.SectionReader) [Size]byte {

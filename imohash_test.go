@@ -37,7 +37,7 @@ func TestDefault(t *testing.T) {
 	is.Equal(hash, [Size]byte{})
 
 	// small file
-	hash = Sum128([]byte("hello"))
+	hash = Sum([]byte("hello"))
 	hashStr := fmt.Sprintf("%x", hash)
 	is.Equal(hashStr, "05d8a7b341bd9b025b1e906a48ae1d19")
 
@@ -189,38 +189,4 @@ func TestCustom(t *testing.T) {
 
 	os.Remove(sampleFile)
 
-}
-
-// Test the basic hash.Hash functions
-func TestHashInterface(t *testing.T) {
-	is := is.New(t)
-
-	// Test Write() and Sum()
-	defaultHasher := New()
-	defaultHasher.Reset()
-	defaultHasher.Write([]byte("hello"))
-	base := []byte{0x55, 0x22, 0xee}
-	hashStr := fmt.Sprintf("%x", defaultHasher.Sum(base))
-	is.Equal(hashStr, "5522ee05d8a7b341bd9b025b1e906a48ae1d19") // matches reference murmur3 hash
-
-	// Test that calling Sum() previously didn't affect state
-	base = []byte{0x55, 0x22, 0xee}
-	hashStr = fmt.Sprintf("%x", defaultHasher.Sum(base))
-	is.Equal(hashStr, "5522ee05d8a7b341bd9b025b1e906a48ae1d19")
-
-	// Test adding more data with Write()
-	defaultHasher.Write([]byte(", world"))
-	base = []byte{0x99}
-	hashStr = fmt.Sprintf("%x", defaultHasher.Sum(base))
-	is.Equal(hashStr, "990c2fac623a5ebc8e4cdcbc079642414d") // matches reference murmur3 hash
-
-	// Test Reset()
-	defaultHasher.Reset()
-	base = []byte{}
-	hashStr = fmt.Sprintf("%x", defaultHasher.Sum(base))
-	is.Equal(hashStr, "00000000000000000000000000000000")
-
-	// Test BlockSize() and Size()
-	is.Equal(defaultHasher.BlockSize(), 1)
-	is.Equal(defaultHasher.Size(), 16)
 }

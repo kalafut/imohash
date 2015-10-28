@@ -33,7 +33,7 @@ for:
 
 ## Design
 
-(Note: a more precise description is provide in the
+(Note: a more precise description is provided in the
 [algorithm description](https://github.com/kalafut/imohash/blob/master/algorithm.md).)
 
 imohash is works by hashing small chunks of data from the beginning, middle and

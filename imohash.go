@@ -16,7 +16,7 @@ import (
 const Size = 16
 
 // Files smaller than this will be hashed in their entirety.
-const SampleThreshhold = 128 * 1024
+const SampleThreshold = 128 * 1024
 const SampleSize = 16 * 1024
 
 var emptyArray = [Size]byte{}
@@ -31,7 +31,7 @@ type ImoHash struct {
 // New returns a new ImoHash using the default sample size
 // and sample threshhold values.
 func New() ImoHash {
-	return NewCustom(SampleSize, SampleThreshhold)
+	return NewCustom(SampleSize, SampleThreshold)
 }
 
 // NewCustom returns a new ImoHash using the provided sample size

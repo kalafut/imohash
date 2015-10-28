@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"testing"
 
@@ -125,7 +124,7 @@ func TestDefault(t *testing.T) {
 
 	for _, size := range []int{100, 131071, 131072, 50000} {
 		imo := NewCustom(16384, 131072)
-		testData = randData(size)
+		testData = M(size)
 		is.Equal(Sum(testData), imo.Sum(testData))
 		ioutil.WriteFile(sampleFile, []byte{}, 0666)
 		h1, _ = SumFile(sampleFile)
@@ -133,13 +132,4 @@ func TestDefault(t *testing.T) {
 		is.Equal(h1, h2)
 	}
 	os.Remove(sampleFile)
-}
-
-// randData generates n bytes of random data
-func randData(n int) []byte {
-	r := make([]byte, 0, n)
-	for i := 0; i < n; i++ {
-		r = append(r, byte(rand.Intn(256)))
-	}
-	return r
 }

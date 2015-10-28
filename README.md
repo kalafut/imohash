@@ -33,8 +33,8 @@ for:
 
 ## Design
 
-(*Note: a more precise description is provide in the
-[algorithm description](https://github.com/kalafut/imohash/blob/master/algorithm.md)*)
+(Note: a more precise description is provide in the
+[algorithm description](https://github.com/kalafut/imohash/blob/master/algorithm.md).)
 
 imohash is works by hashing small chunks of data from the beginning, middle and
 end of a file. It also incorporates the file size into the final 128-bit hash.

@@ -24,7 +24,7 @@ imohash takes two parameters, as well as the message length:
 * message length (L)
 
 There are two mode of operation: **sampled** and **full**. Mode is
-determined are follows:
+determined as follows:
 
 ```
 if (s > 0) && (t > 0) && (L > t) && (t > 2s) 
@@ -35,14 +35,13 @@ else
 
 ### Hash calculation
 
-The core hashing routine uses murmurhash3 in a 128-bit configuration.
-Hashing in full mode is identical to passing the entire
-message to Murmhash3.  sampled mode constructs a new message using
+The core hashing routine uses [MurmurHash3](https://code.google.com/p/smhasher/wiki/MurmurHash3) in a 128-bit configuration.
+Hashing in *Full* mode is identical to passing the entire
+message to Murmhash3.  *Sampled* mode constructs a new message using
 three samples from the original:
 
-Consider message M of length L an array of bytes, M[0]...M[L-1]. If
-L > t, full mode is used and h'=Murmur3(M). Otherwise, samples are
-made selected and concatenated as follows:
+Message M of length L is an array of bytes, M[0]...M[L-1]. If
+L > t, full mode is used and h'=Murmur3(M). Otherwise, samples are selected and concatenated as follows:
 
 ```
 middle = floor(L/2)
@@ -58,7 +57,7 @@ Size is inserted into the hash directly. This means that two files
 that differ in size are guaranteed to have different hashes.
 
 The message size is converted to a variable-length integer (varint)
-using 128-bit encoding. Consult Google Protobuf documentation for more
+using 128-bit encoding. Consult [Google Protobuf documentation](https://developers.google.com/protocol-buffers/docs/encoding#varints) for more
 information on the technique.
 
 The result of encoding will be an array **v** of 1 or more bytes. This
@@ -74,7 +73,7 @@ h is the final imosum hash.
 
 The default imohash parameters are:
 
-s = 16384
+s = 16384  
 t = 131072
 
 t was chosen to delay sampling until file size was outside the range
@@ -87,8 +86,7 @@ An application should adjust these values as necessary.
 
 ## Test Vectors
 
-(Note: these have not been independently verified using another
-Variant V encoding:
+(Note: these have not been independently verified using another implementation.)
 
 To avoid offset errors in testing, the test messages needs to not repeat
 trivially. To this end, MurmurHash3 is used to generate pseudorandom test
@@ -125,6 +123,6 @@ threshold t.
 {16384, 131072, 500000, "a0c21ea46738cf366d496962000a45f7"},
 ```
 
-## References
+
 
 

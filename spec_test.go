@@ -1,10 +1,9 @@
 package imohash
 
 import (
+	"crypto/md5"
 	"fmt"
 	"testing"
-
-	"github.com/spaolacci/murmur3"
 
 	"gopkg.in/tylerb/is.v1"
 )
@@ -20,14 +19,15 @@ func TestSpec(t *testing.T) {
 		hash string
 	}{
 		{16384, 131072, 0, "00000000000000000000000000000000"},
-		{16384, 131072, 1, "016ac6dd306a3e594e711127c5b5a8e4"},
-		{16384, 131072, 127, "7f0e0eaa0a415e2878303214a087fbab"},
-		{16384, 131072, 128, "80017902d85ab752459758292a217ed8"},
-		{16384, 131072, 4095, "ff1fc7e3b9890469ee676df99f6ac7b7"},
-		{16384, 131072, 4096, "80203d4ea589349dcdf63511a8d49d4a"},
-		{16384, 131072, 131072, "808008ed886018d5cd37a9b35bbae286"},
-		{16384, 131073, 131072, "808008ac6ab33ddcaadea68ba5ad4f05"},
-		{16384, 131072, 500000, "a0c21ea46738cf366d496962000a45f7"},
+		{16384, 131072, 1, "01659e2ec0f3c75bf39e43a41adb5d4f"},
+		{16384, 131072, 127, "7f47671cc79d4374404b807249f3166e"},
+		{16384, 131072, 128, "800183e5dbea2e5199ef7c8ea963a463"},
+		{16384, 131072, 4095, "ff1f770d90d3773949d89880efa17e60"},
+		{16384, 131072, 4096, "802048c26d66de432dbfc71afca6705d"},
+		{16384, 131072, 131072, "8080085a3d3af2cb4b3a957811cdf370"},
+		{16384, 131073, 131072, "808008282d3f3b53e1fd132cc51fcc1d"},
+		{16384, 131072, 500000, "a0c21e44a0ba3bddee802a9d1c5332ca"},
+		{50, 131072, 300000, "e0a712edd8815c606344aed13c44adcf"},
 	}
 
 	for _, test := range tests {
@@ -41,7 +41,7 @@ func TestSpec(t *testing.T) {
 // method described in the imohash algorithm description.
 func M(n int) []byte {
 	r := make([]byte, 0, n)
-	hasher := murmur3.New128()
+	hasher := md5.New()
 
 	for len(r) < n {
 		hasher.Write([]byte{'A'})

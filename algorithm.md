@@ -27,7 +27,7 @@ There are two mode of operation: **sampled** and **full**. Mode is
 determined as follows:
 
 ```
-if (s > 0) && (t > 0) && (L > t) && (t > 2s) 
+if (s > 0) && (t > 0) && (L > t) && (t > 2s)
   mode = sampled
 else
   mode = full
@@ -73,7 +73,7 @@ h is the final imosum hash.
 
 The default imohash parameters are:
 
-s = 16384  
+s = 16384
 t = 131072
 
 t was chosen to delay sampling until file size was outside the range
@@ -88,39 +88,37 @@ An application should adjust these values as necessary.
 
 (Note: these have not been independently verified using another implementation.)
 
-To avoid offset errors in testing, the test messages needs to not repeat
-trivially. To this end, MurmurHash3 is used to generate pseudorandom test
-data (which also provides a convenient verification of the implementation
-of MurmurHash3). The message generation uses the 128-bit variant of
-MurmurHash3 to add 16 bytes at a time. M(n) shall be a test data n bytes
-long:
+To avoid offset errors in testing, the test messages need to not repeat
+trivially. To this end, MD5 is used to generate pseudorandom test data, 16 bytes at a time,
+By repeatedly updating the hash with 'A'. M(n) shall be a test data n bytes long:
 
 ```
 M(n):
    msg = []
    while len(msg) < n:
-       MurmurHash3.Write('A')
-       msg = msg + MurmurHash3.Sum()
+       Md5.Write('A')
+       msg = msg + Md5.Sum()
    return msg[0:n]
 
-// M(16)      ==     035fc2b79a29b17a387df29c46dd9937
-// M(1000000) == ... 7b7cd46489e93605eb7894c5d338463f
+// M(16)      ==     7fc56270e7a70fa81a5935b72eacbe29
+// M(1000000) == ... 197c74f51423765786516442fd1c9832
 ```
 
 Test vectors for imohash of M length n using sample size s and sample
 threshold t.
 
 ```
-  s       t     M(n)        I
-{16384, 131072, 0, "00000000000000000000000000000000"},
-{16384, 131072, 1, "016ac6dd306a3e594e711127c5b5a8e4"},
-{16384, 131072, 127, "7f0e0eaa0a415e2878303214a087fbab"},
-{16384, 131072, 128, "80017902d85ab752459758292a217ed8"},
-{16384, 131072, 4095, "ff1fc7e3b9890469ee676df99f6ac7b7"},
-{16384, 131072, 4096, "80203d4ea589349dcdf63511a8d49d4a"},
-{16384, 131072, 131072, "808008ed886018d5cd37a9b35bbae286"},
-{16384, 131073, 131072, "808008ac6ab33ddcaadea68ba5ad4f05"},
-{16384, 131072, 500000, "a0c21ea46738cf366d496962000a45f7"},
+  s       t     M(n)                 I
+{16384, 131072, 0,      "00000000000000000000000000000000"},
+{16384, 131072, 1,      "01659e2ec0f3c75bf39e43a41adb5d4f"},
+{16384, 131072, 127,    "7f47671cc79d4374404b807249f3166e"},
+{16384, 131072, 128,    "800183e5dbea2e5199ef7c8ea963a463"},
+{16384, 131072, 4095,   "ff1f770d90d3773949d89880efa17e60"},
+{16384, 131072, 4096,   "802048c26d66de432dbfc71afca6705d"},
+{16384, 131072, 131072, "8080085a3d3af2cb4b3a957811cdf370"},
+{16384, 131073, 131072, "808008282d3f3b53e1fd132cc51fcc1d"},
+{16384, 131072, 500000, "a0c21e44a0ba3bddee802a9d1c5332ca"},
+{50,    131072, 300000, "e0a712edd8815c606344aed13c44adcf"},
 ```
 
 

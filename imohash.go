@@ -63,7 +63,11 @@ func Sum(data []byte) [Size]byte {
 func (imo *ImoHash) Sum(data []byte) [Size]byte {
 	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
 
-	return imo.hashCore(sr)
+	result, err := imo.hashCore(sr)
+	if err != nil {
+		panic(err)
+	}
+	return result
 }
 
 // SumFile hashes a file using using the ImoHash parameters.
@@ -80,28 +84,38 @@ func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
 		return emptyArray, err
 	}
 	sr := io.NewSectionReader(f, 0, fi.Size())
-	return imo.hashCore(sr), nil
+	return imo.hashCore(sr)
 }
 
 // hashCore hashes a SectionReader using the ImoHash parameters.
-func (imo *ImoHash) hashCore(f *io.SectionReader) [Size]byte {
+func (imo *ImoHash) hashCore(f *io.SectionReader) ([Size]byte, error) {
 	var result [Size]byte
 
 	imo.hasher.Reset()
 
 	if f.Size() < int64(imo.sampleThreshold) || imo.sampleSize < 1 {
-		buffer := make([]byte, f.Size())
-		f.Read(buffer)
-		imo.hasher.Write(buffer)
+		if _, err := io.Copy(imo.hasher, f); err != nil {
+			return emptyArray, err
+		}
 	} else {
 		buffer := make([]byte, imo.sampleSize)
-		f.Read(buffer)
+		if _, err := f.Read(buffer); err != nil {
+			return emptyArray, err
+		}
+		imo.hasher.Write(buffer) // these Writes never fail
+		if _, err := f.Seek(f.Size()/2, 0); err != nil {
+			return emptyArray, err
+		}
+		if _, err := f.Read(buffer); err != nil {
+			return emptyArray, err
+		}
 		imo.hasher.Write(buffer)
-		f.Seek(f.Size()/2, 0)
-		f.Read(buffer)
-		imo.hasher.Write(buffer)
-		f.Seek(int64(-imo.sampleSize), 2)
-		f.Read(buffer)
+		if _, err := f.Seek(int64(-imo.sampleSize), 2); err != nil {
+			return emptyArray, err
+		}
+		if _, err := f.Read(buffer); err != nil {
+			return emptyArray, err
+		}
 		imo.hasher.Write(buffer)
 	}
 
@@ -110,5 +124,5 @@ func (imo *ImoHash) hashCore(f *io.SectionReader) [Size]byte {
 	binary.PutUvarint(hash, uint64(f.Size()))
 	copy(result[:], hash)
 
-	return result
+	return result, nil
 }

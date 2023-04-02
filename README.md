@@ -6,7 +6,7 @@ sampling to calculate hashes quickly, regardless of file size.
 [imosum](https://github.com/kalafut/imohash/blob/master/cmd/imosum/main.go) is
 a sample application to hash files from the command line, similar to md5sum.
 
-imohash is also available as [a Python library](https://github.com/kalafut/py-imohash).
+imohash is also available as [a Python library](https://github.com/kalafut/py-imohash) and as part of the [hash4j Java library](https://github.com/dynatrace-oss/hash4j).
 
 ## Installation
 

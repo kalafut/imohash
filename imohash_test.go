@@ -43,6 +43,8 @@ func TestCustom(t *testing.T) {
 	// small file
 	ioutil.WriteFile(sampleFile, []byte("hello"), 0666)
 	hash, err = imo.SumFile(sampleFile)
+	is.NotErr(err)
+
 	hashStr := fmt.Sprintf("%x", hash)
 	is.Equal(hashStr, "05d8a7b341bd9b025b1e906a48ae1d19")
 

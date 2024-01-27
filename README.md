@@ -1,3 +1,5 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/kalafut/imohash.svg)](https://pkg.go.dev/github.com/kalafut/imohash)
+
 # imohash
 
 imohash is a fast, constant-time hashing library for Go. It uses file size and
@@ -15,7 +17,7 @@ a sample application to hash files from the command line, similar to md5sum.
 
 `go get github.com/kalafut/imohash/...`
 
-The API is described in the [package documentation](https://godoc.org/github.com/kalafut/imohash).
+The API is described in the [package documentation](https://pkg.go.dev/github.com/kalafut/imohash).
 
 ## Uses
 

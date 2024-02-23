@@ -4,13 +4,10 @@ import (
 	"crypto/md5"
 	"fmt"
 	"testing"
-
-	"gopkg.in/tylerb/is.v1"
 )
 
 func TestSpec(t *testing.T) {
 	var hashStr string
-	is := is.New(t)
 
 	tests := []struct {
 		s    int
@@ -33,7 +30,7 @@ func TestSpec(t *testing.T) {
 	for _, test := range tests {
 		i := NewCustom(test.s, test.t)
 		hashStr = fmt.Sprintf("%x", i.Sum(M(test.n)))
-		is.Equal(hashStr, test.hash)
+		equal(t, hashStr, test.hash)
 	}
 }
 

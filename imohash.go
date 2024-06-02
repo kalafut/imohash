@@ -59,6 +59,12 @@ func Sum(data []byte) [Size]byte {
 	return imo.Sum(data)
 }
 
+// SumSectionReader hashes a SectionReader using default sample parameters.
+func SumSectionReader(sr *io.SectionReader) ([Size]byte, error) {
+	imo := New()
+	return imo.hashCore(sr)
+}
+
 // Sum hashes a byte slice using the ImoHash parameters.
 func (imo *ImoHash) Sum(data []byte) [Size]byte {
 	sr := io.NewSectionReader(bytes.NewReader(data), 0, int64(len(data)))
@@ -85,6 +91,11 @@ func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
 	}
 	sr := io.NewSectionReader(f, 0, fi.Size())
 	return imo.hashCore(sr)
+}
+
+// SumSectionReader hashes a SectionReader using the ImoHash parameters.
+func (imo *ImoHash) SumSectionReader(f *io.SectionReader) ([Size]byte, error) {
+	return imo.hashCore(f)
 }
 
 // hashCore hashes a SectionReader using the ImoHash parameters.

@@ -19,25 +19,28 @@ This is done in two phases:
 
 imohash takes two parameters, as well as the message length:
 
-* sample size (s)
-* sampling threshold (t)
-* message length (L)
+- sample size (s)
+- sampling threshold (t)
+- message length (L)
 
-There are two mode of operation: **sampled** and **full**. Mode is
-determined as follows:
+There are two mode of operation: **sampled** and **full**.
+
+**Full** mode is a single hash of the entire message. While sampling is the key point of imohash, sometimes it doesn't make sense and a full hash is used. It is used when the message length is less than the sampling threshold, or is less than twice the sample size - 1 (in order to sample from the middle of the message). **Full** mode is also used when the sample size parameter is less than 1.
+
+In all other cases **sampled** mode is used. Summarized:
 
 ```
-if (s > 0) && (t > 0) && (L > t) && (t > 2s)
-  mode = sampled
-else
+if (s < 1) || (L < t) || (L < (2s - 1))
   mode = full
+else
+  mode = sampled
 ```
 
 ### Hash calculation
 
 The core hashing routine uses [MurmurHash3](https://code.google.com/p/smhasher/wiki/MurmurHash3) in a 128-bit configuration.
-Hashing in *Full* mode is identical to passing the entire
-message to Murmhash3.  *Sampled* mode constructs a new message using
+Hashing in **Full** mode is identical to passing the entire
+message to Murmhash3. **Sampled** mode constructs a new message using
 three samples from the original:
 
 Message M of length L is an array of bytes, M[0]...M[L-1]. If
@@ -51,6 +54,7 @@ S2 = M[L-s:L-1]
 
 h' = Murmur3(concat(S0, S1, S2))
 ```
+
 ### Size injection
 
 Size is inserted into the hash directly. This means that two files
@@ -119,8 +123,8 @@ threshold t.
 {16384, 131073, 131072, "808008282d3f3b53e1fd132cc51fcc1d"},
 {16384, 131072, 500000, "a0c21e44a0ba3bddee802a9d1c5332ca"},
 {50,    131072, 300000, "e0a712edd8815c606344aed13c44adcf"},
+{0,     100,    1000,  "e80753211a57ee0de67c756e98e00496"},
+{50,    9999,   1000,  "e80753211a57ee0de67c756e98e00496"},
+{501,   20,     1000,  "e80753211a57ee0de67c756e98e00496"},
+{501,   20,     1001,  "e9079899cffb46f60c8645a01f12f9c9"},
 ```
-
-
-
-

@@ -25,7 +25,6 @@ type ImoHash struct {
 	hasher          murmur3.Hash128
 	sampleSize      int
 	sampleThreshold int
-	bytesAdded      int
 }
 
 // New returns a new ImoHash using the default sample size
@@ -79,11 +78,10 @@ func (imo *ImoHash) Sum(data []byte) [Size]byte {
 // SumFile hashes a file using using the ImoHash parameters.
 func (imo *ImoHash) SumFile(filename string) ([Size]byte, error) {
 	f, err := os.Open(filename)
-	defer f.Close()
-
 	if err != nil {
 		return emptyArray, err
 	}
+	defer f.Close()
 
 	fi, err := f.Stat()
 	if err != nil {
@@ -104,27 +102,30 @@ func (imo *ImoHash) hashCore(f *io.SectionReader) ([Size]byte, error) {
 
 	imo.hasher.Reset()
 
-	if f.Size() < int64(imo.sampleThreshold) || imo.sampleSize < 1 {
+	msgLen := f.Size()
+	if imo.sampleSize < 1 ||
+		msgLen < int64(imo.sampleThreshold) ||
+		msgLen < int64(2*imo.sampleSize-1) {
 		if _, err := io.Copy(imo.hasher, f); err != nil {
 			return emptyArray, err
 		}
 	} else {
 		buffer := make([]byte, imo.sampleSize)
-		if _, err := f.Read(buffer); err != nil {
+		if _, err := io.ReadFull(f, buffer); err != nil {
 			return emptyArray, err
 		}
 		imo.hasher.Write(buffer) // these Writes never fail
 		if _, err := f.Seek(f.Size()/2, 0); err != nil {
 			return emptyArray, err
 		}
-		if _, err := f.Read(buffer); err != nil {
+		if _, err := io.ReadFull(f, buffer); err != nil {
 			return emptyArray, err
 		}
 		imo.hasher.Write(buffer)
 		if _, err := f.Seek(int64(-imo.sampleSize), 2); err != nil {
 			return emptyArray, err
 		}
-		if _, err := f.Read(buffer); err != nil {
+		if _, err := io.ReadFull(f, buffer); err != nil {
 			return emptyArray, err
 		}
 		imo.hasher.Write(buffer)

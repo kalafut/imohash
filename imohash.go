@@ -105,7 +105,7 @@ func (imo *ImoHash) hashCore(f *io.SectionReader) ([Size]byte, error) {
 	msgLen := f.Size()
 	if imo.sampleSize < 1 ||
 		msgLen < int64(imo.sampleThreshold) ||
-		msgLen < int64(2*imo.sampleSize-1) {
+		msgLen < int64(4*imo.sampleSize) {
 		if _, err := io.Copy(imo.hasher, f); err != nil {
 			return emptyArray, err
 		}

@@ -25,12 +25,16 @@ imohash takes two parameters, as well as the message length:
 
 There are two mode of operation: **sampled** and **full**.
 
-**Full** mode is a single hash of the entire message. While sampling is the key point of imohash, sometimes it doesn't make sense and a full hash is used. It is used when the message length is less than the sampling threshold, or is less than twice the sample size - 1 (in order to sample from the middle of the message). **Full** mode is also used when the sample size parameter is less than 1.
+**Full** mode is a single hash of the entire message. While sampling is the key point of imohash, sometimes it doesn't make sense and a full hash is used:
+
+- message length (L) is less than the sampling threshold (t)
+- L is less than 4 times the sample size (s). This avoids EOF errors and overlapping samples
+- sample size is less than 1
 
 In all other cases **sampled** mode is used. Summarized:
 
 ```
-if (s < 1) || (L < t) || (L < (2s - 1))
+if (s < 1) || (L < t) || (L < 4s)
   mode = full
 else
   mode = sampled
@@ -123,8 +127,8 @@ threshold t.
 {16384, 131073, 131072, "808008282d3f3b53e1fd132cc51fcc1d"},
 {16384, 131072, 500000, "a0c21e44a0ba3bddee802a9d1c5332ca"},
 {50,    131072, 300000, "e0a712edd8815c606344aed13c44adcf"},
-{0,     100,    1000,  "e80753211a57ee0de67c756e98e00496"},
-{50,    9999,   1000,  "e80753211a57ee0de67c756e98e00496"},
-{501,   20,     1000,  "e80753211a57ee0de67c756e98e00496"},
-{501,   20,     1001,  "e9079899cffb46f60c8645a01f12f9c9"},
+{0,     100,    999,    "e7078bfc9bdf7d7706adbd21002bb752"},
+{50,    9999,   999,    "e7078bfc9bdf7d7706adbd21002bb752"},
+{250,   20,     999,    "e7078bfc9bdf7d7706adbd21002bb752"},
+{250,   20,     1000,   "e807ae87d3dafb5eb6518a5a256297e9"},
 ```

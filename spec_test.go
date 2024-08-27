@@ -25,12 +25,17 @@ func TestSpec(t *testing.T) {
 		{16384, 131073, 131072, "808008282d3f3b53e1fd132cc51fcc1d"},
 		{16384, 131072, 500000, "a0c21e44a0ba3bddee802a9d1c5332ca"},
 		{50, 131072, 300000, "e0a712edd8815c606344aed13c44adcf"},
+
+		{0, 100, 999, "e7078bfc9bdf7d7706adbd21002bb752"},
+		{50, 9999, 999, "e7078bfc9bdf7d7706adbd21002bb752"},
+		{250, 20, 999, "e7078bfc9bdf7d7706adbd21002bb752"},
+		{250, 20, 1000, "e807ae87d3dafb5eb6518a5a256297e9"},
 	}
 
 	for _, test := range tests {
 		i := NewCustom(test.s, test.t)
 		hashStr = fmt.Sprintf("%x", i.Sum(M(test.n)))
-		equal(t, hashStr, test.hash)
+		equal(t, test.hash, hashStr)
 	}
 }
 

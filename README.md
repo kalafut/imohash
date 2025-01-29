@@ -10,6 +10,7 @@ a sample application to hash files from the command line, similar to md5sum.
 
 ### Alternative implementations
 * **Java**: https://github.com/dynatrace-oss/hash4j
+* **JavaScript/TypeScript**: https://github.com/clockwork-dog/imohash
 * **Python**: https://github.com/kalafut/py-imohash
 * **Rust**: https://github.com/hiql/imohash
 

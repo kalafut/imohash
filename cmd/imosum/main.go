@@ -32,7 +32,9 @@ func walkDirFunction(path string, dirEntry fs.DirEntry, err error) error {
 }
 
 func processDir(path string) {
-	filepath.WalkDir(path, walkDirFunction)
+	if err := filepath.WalkDir(path, walkDirFunction); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {

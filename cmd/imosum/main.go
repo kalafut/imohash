@@ -5,26 +5,56 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/kalafut/imohash"
 )
 
+func processFile(path string) {
+	hash, err := imohash.SumFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%016x  %s\n", hash, path)
+}
+
+func walkDirFunction(path string, dirEntry fs.DirEntry, err error) error {
+   if err != nil {
+      return err
+   }
+   if ! dirEntry.IsDir() {
+      processFile(path)
+   }
+   return nil
+}
+
+func processDir(path string) {
+	filepath.WalkDir(path, walkDirFunction)
+}
+
 func main() {
 	flag.Parse()
-	files := flag.Args()
+	paths := flag.Args()
 
-	if len(files) == 0 {
-		fmt.Println("imosum filenames")
+	if len(paths) == 0 {
+		fmt.Println("imosum - Prints the imohash from the file system")
+		fmt.Println("USAGE: imosum path1 path2...")
+		fmt.Println("If directories are provided, all files within them will be processed.")
 		os.Exit(0)
 	}
 
-	for _, file := range files {
-		hash, err := imohash.SumFile(file)
+	for _, path := range paths {
+		fileInfo, err := os.Stat(path)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%016x  %s\n", hash, file)
+		if fileInfo.IsDir() {
+			processDir(path)
+		} else {
+			processFile(path)
+		}
 	}
 }

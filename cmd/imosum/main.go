@@ -69,16 +69,20 @@ func checkFile(path string) {
 		fmt.Printf("%s: %s\n", parts[1], readableResult)
 	}
 
-	if failedHashes > 1 {
-		fmt.Fprintf(os.Stderr, "imosum: WARNING: %d computed checksums did NOT match\n", failedHashes)
-	} else if failedHashes == 1 {
-		fmt.Fprintf(os.Stderr, "imosum: WARNING: %d computed checksum did NOT match\n", failedHashes)
+	if failedHashes > 0 {
+		checksumStr := "checksum"
+		if failedHashes > 1 {
+			checksumStr += "s"
+		}
+		fmt.Fprintf(os.Stderr, "imosum: WARNING: %d computed %s did NOT match\n", failedHashes, checksumStr)
 	}
 
-	if malformedLines > 1 {
-		fmt.Fprintf(os.Stderr, "imosum: WARNING: %d lines are improperly formatted\n", malformedLines)
-	} else if malformedLines == 1 {
-		fmt.Fprintf(os.Stderr, "imosum: WARNING: %d line is improperly formatted\n", malformedLines)
+	if malformedLines > 0 {
+		lineStr := "line is"
+		if malformedLines > 1 {
+			lineStr = "lines are"
+		}
+		fmt.Fprintf(os.Stderr, "imosum: WARNING: %d %s improperly formatted\n", malformedLines, lineStr)
 	}
 }
 

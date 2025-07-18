@@ -48,8 +48,6 @@ func checkFile(path string) {
 		line := scanner.Text()
 		parts := strings.SplitN(line, "  ", 2)
 
-		fmt.Print("parts: ", parts, " len: ", len(parts), "\n")
-
 		if len(parts) != 2 {
 			malformedLines += 1
 			continue

@@ -53,17 +53,18 @@ func checkFile(path string) {
 			continue
 		}
 
+		readableResult := "FAILED"
 		hash, err := imohash.SumFile(parts[1])
 		if err != nil {
 			failedHashes += 1
-		}
-		computedHash := fmt.Sprintf("%016x", hash)
-
-		readableResult := "FAILED"
-		if computedHash == parts[0] {
-			readableResult = "OK"
 		} else {
-			failedHashes += 1
+			hashStr := fmt.Sprintf("%016x", hash)
+
+			if hashStr == parts[0] {
+				readableResult = "OK"
+			} else {
+				failedHashes += 1
+			}
 		}
 
 		fmt.Printf("%s: %s\n", parts[1], readableResult)

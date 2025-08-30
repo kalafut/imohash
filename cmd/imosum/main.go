@@ -70,6 +70,10 @@ func checkFile(path string) {
 		fmt.Printf("%s: %s\n", parts[1], readableResult)
 	}
 
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
 	if failedHashes > 0 {
 		checksumStr := "checksum"
 		if failedHashes > 1 {
